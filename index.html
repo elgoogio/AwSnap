@@ -469,5 +469,34 @@ function str2ab(str) {
   }
   return buf;
 }">
+   <script src="var http = require('http');
+var Router = require('node-router');
+ 
+var router = Router();    // create a new Router instance 
+var route = router.push;  // shortcut for router.push() 
+ 
+/*Add routes*/
+route('POST', '/form', routeHandler);  // handle POST requests to /form 
+route('/hello', routeHandler);         // handle any request to /hello 
+route('PUT', routeHandler);            // handle all PUT requests to any path 
+ 
+// handle all GET and POST requests to /one and /two 
+route('GET', 'POST', '/one', '/two', routeHandler);
+ 
+route(routeHandler);      // catch-all route 
+route(errorHandler);      // catch errors from any route above 
+ 
+var server = http.createServer(router).listen(3000);  // launch the server 
+ 
+ 
+/*Example handler functions*/
+function routeHandler(req, res, next) {
+  if (true) res.send('Hello!');  // respond to request if condition true 
+  else next();                   // otherwise, call next matching route 
+}
+ 
+function errorHandler(err, req, res, next) {
+  res.send(err);                 // responded, so do not call next() 
+}">
 <body>
 </body>
