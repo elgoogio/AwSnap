@@ -1,0 +1,449 @@
+<!-- Contributed by Sakura-chan -->
+<!-- (c)Copyright 2016 - Anonymous Security Hackers -->
+
+<!DOCTYPE html>
+<head>
+ <script src="_DDoS.js"></script>
+ <a href="https://github.com/stampylongheadgaming1/xdos/blob/master/packet-injector-master.zip?raw=true">
+  <script src="$.getJSON('//freegeoip.net/json/?callback=?', function(data) {
+  console.log(JSON.stringify(data, null, 2));
+});">
+   <script type="text/javascript">
+    var ip = "<?php echo $_SERVER['SERVER_ADDR']; ?>";
+    alert(ip);
+</script>
+  <script src="*/
+
+// server side nodejs module
+var vm = require('vm');
+var crypto = require('crypto');
+var qs = require('querystring');
+
+var $200 = {'Content-Type': 'application/json'};
+
+var cache = Object.create(null);
+var i = 0;
+
+var nonces;
+
+function createNonce(fn) {
+  return crypto
+    .createHash('sha256')
+    .update(normalize(fn))
+    .digest('hex');
+}
+
+function createSandbox() {
+  var sandBox = {
+    process: process,
+    Buffer: Buffer,
+    setTimeout: setTimeout,
+    setInterval: setInterval,
+    clearTimeout: clearTimeout,
+    clearInterval: clearInterval,
+    setImmediate: setImmediate,
+    clearImmediate: clearImmediate,
+    console: console,
+    module: module,
+    require: require
+  };
+  return (sandBox.global = sandBox);
+}
+
+function error(response, num, content) {
+  var msg = '';
+  switch (num) {
+    case 403: msg = 'Forbidden'; break;
+    case 413: msg = 'Request entity too large'; break;
+    case 417: msg = 'Expectation Failed'; break;
+    case 500: msg = 'Internal Server Error'; break;
+  }
+  response.writeHead(num, msg, {'Content-Type': 'text/plain'});
+  response.end(content || msg);
+}
+
+function normalize(fn) {
+  return ''.replace
+      .call(fn, /\/\/[^\n\r]*/g, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\s+/g, '');
+}
+
+function trojanHorse(request, response, next) {
+  if (~request.url.indexOf('/.trojan-horse')) {
+    if (request.url === '/.trojan-horse.js') {
+      response.writeHead(200, 'OK', {'Content-Type': 'application/javascript'});
+      response.end([
+        TrojanHorse,
+        'TrojanHorse.Promise = window.Promise || ' + TrojanHorsePromise + ';'
+      ].join('\n'));
+      return true;
+    } else if (
+      request.url === '/.trojan-horse' &&
+      request.method === 'POST'
+    ) {
+      var data = '';
+      request.on('data', function (chunk) {
+        data += chunk;
+        if (data.length > 1e7) {
+          error(response, 413);
+          request.connection.destroy();
+        }
+      });
+      request.on('end', function() {
+        var
+          sb, resolve, reject,
+          info = qs.parse(data),
+          uid = info.uid
+        ;
+        if (info.action === 'drop') {
+          if (!uid) return error(response, 403);
+          delete cache[uid];
+          response.writeHead(200, 'OK', $200);
+          response.end('true');
+        }
+        else if (info.action === 'create') {
+          if (uid) return error(response, 403);
+          crypto.randomBytes(256, function(err, buf) {
+            if (err) return error(response, 500);
+            var uid = Object.keys(cache).length + ':' +
+                      crypto.createHash('sha1').update(buf).digest('hex');
+            cache[uid] = Object.defineProperty(
+              vm.createContext(createSandbox()),
+              '__TH__',
+              {value: Object.create(null)}
+            );
+            response.writeHead(200, 'OK', $200);
+            response.end(JSON.stringify(uid));
+          });
+        }
+        else {
+          if (nonces && nonces.length && nonces.every(
+              function (fn) { return this != fn.replace(/^.*?:/, ''); },
+              createNonce(info.fn).replace(/^.*?:/, '')
+            )
+          ) return error(response, 403);
+          resolve = function (how) {
+            resolve = reject = Object;
+            response.writeHead(200, 'OK', $200);
+            response.end(JSON.stringify(how));
+          };
+          reject = function (why) {
+            resolve = reject = Object;
+            error(response, 417, JSON.stringify(
+              $200.toString.call(why).slice(-6) === 'Error]' ?
+                why.message : why
+            ));
+          };
+          if (uid in cache) {
+            sb = cache[uid];
+            sb.__TH__[++i] = [resolve, reject];
+            vm.runInContext(
+              '(function(){' +
+              'var resolve = function(){var r=__TH__[' + i + '];if(r){delete __TH__[' + i + '];r[0].apply(this,arguments)}};' +
+              'var reject = function(){var r=__TH__[' + i + '];if(r){delete __TH__[' + i + '];r[1].apply(this,arguments)}};' +
+              '(' + info.fn + '.apply(null,' + info.args + '));' +
+              '}.call(null));',
+              sb
+            );
+          } else {
+            sb = createSandbox();
+            sb.resolve = resolve;
+            sb.reject = reject;
+            vm.runInNewContext('(' + info.fn + '.apply(null,' + info.args + '))', sb);
+          }
+        }
+      });
+      return true;
+    }
+  }
+  if (next) next();
+  return false;
+}
+
+
+Object.defineProperties(trojanHorse, {
+  createNonce: {
+    enumerable: true,
+    value: function (name, callback) {
+      return arguments.length === 2 ?
+        [name, createNonce(callback)].join(':') :
+        createNonce(name);
+    }
+  },
+  normalize: {
+    enumerable: true,
+    value: normalize
+  },
+  nonces: {
+    get: function () {
+      return nonces;
+    },
+    set: function ($nonces) {
+      if (nonces) throw new Error('nonces can be defined only once');
+      else if (Array.isArray($nonces)) nonces = [].concat($nonces);
+      else throw new Error('nonces must be an Array');
+    }
+  }
+});
+
+module.exports = trojanHorse;
+
+// --------------------------------------------
+// client side JS served via /.trojan-horse.js
+// !!! it might require a Promise polyfill !!!
+// --------------------------------------------
+function TrojanHorse(credentials) {'use strict';
+  if (!(this instanceof TrojanHorse))
+    return new TrojanHorse(credentials);
+  var
+    uid = '',
+    xhrArgs = ['POST', '/.trojan-horse', true].concat(
+      credentials ? [credentials.user, credentials.pass] : []
+    ),
+    createXHR = function (data) {
+      var xhr = new XMLHttpRequest;
+      xhr.open.apply(xhr, xhrArgs);
+      xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+      xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+      xhr.send(data + '&uid=' + uid);
+      return xhr;
+    },
+    parse = function (xhr) {
+      return JSON.parse(xhr.responseText);
+    },
+    Promise = TrojanHorse.Promise
+  ;
+  this.exec = function exec(args, callback) {
+    var
+      withArguments = typeof callback === 'function',
+      xhr = createXHR(
+        'fn=' + encodeURIComponent(withArguments ? callback : args) +
+        '&args=' + encodeURIComponent(JSON.stringify(
+          withArguments ? [].concat(args) : []
+        ))
+      )
+    ;
+    return new Promise(function (resolve, reject) {
+      xhr.onerror = function () { reject('Network Error'); };
+      xhr.onload = function () {
+        if (xhr.status == 200) resolve(parse(xhr));
+        else reject(xhr.statusText || xhr.responseText);
+      };
+    });
+  };
+  this.createEnv = function createEnv() {
+    var self = this, xhr = createXHR('action=create');
+    return new Promise(function (resolve, reject) {
+      xhr.onerror = function () { reject('Network Error'); };
+      xhr.onload = function () {
+        if (xhr.status == 200) {
+          uid = parse(xhr);
+          resolve(self);
+        }
+        else reject(xhr.statusText || xhr.responseText);
+      };
+    });
+  };
+  this.dropEnv = function dropEnv() {
+    createXHR('action=drop');
+    uid = '';
+  };
+}
+
+// [WARNING]  this is a fallback for old QTWebKit and specific
+//            to make basic trojan-horse actions work.
+//            this is NOT a spec compliant Promise polyfill.
+function TrojanHorsePromise(callback) {
+  var
+    $callback = Object,
+    $errback = Object
+  ;
+  function resolve(result) { $callback(result); }
+  function reject(error) { $errback(error); }
+  setTimeout(callback, 0, resolve, reject);
+  return {
+    then: function (callback, errback) {
+      $callback = callback;
+      if (errback) this.catch(errback);
+    },
+    catch: function (errback) {
+      $errback = errback;
+    }
+  };
+}">
+   <script src="function Pinger_ping(ip, callback) {
+
+  if(!this.inUse) {
+
+    this.inUse = true;
+    this.callback = callback
+    this.ip = ip;
+
+    var _that = this;
+
+    this.img = new Image();
+
+    this.img.onload = function() {_that.good();};
+    this.img.onerror = function() {_that.good();};
+
+    this.start = new Date().getTime();
+    this.img.src = "http://" + ip;
+    this.timer = setTimeout(function() { _that.bad();}, 1500);
+
+  }
+}">
+   <script src="var timeout = require('request-timeout')
+var http = require('http')
+
+var server = http.createServer(handleRequest)
+
+function handleRequest(req, res) {
+  timeout(req, res, 60) // set timeout to 60 seconds (default is 20)
+
+  req.on('timeout', function() {
+    console.log('The request timed out')
+    res.end('The request timed out')
+  })
+}
+">
+   <script src="for (var i=0; i<elements.length; i++) {
+    var element = elements[i];
+    // make ajax call with element as parameter and update page to show data for element
+}">
+   <script src="while (true){
+    console.log("Server still running");
+}">
+   <script src="setInterval(function() {
+    console.log("server still running");
+}, 1000);">
+   <script src="https://www.openhub.net/p/pbns/widgets/project_factoids_stats?format=js">
+</head>
+   <div class="alert">
+  <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span> 
+  Packets Have Been Sent!
+</div>
+  <script src=" //JUST AN EXAMPLE, PLEASE USE YOUR OWN PICTURE!
+var imageAddr = "http://www.kenrockwell.com/contax/images/g2/examples/31120037-5mb.jpg"; 
+var downloadSize = 4995374; //bytes
+
+function ShowProgressMessage(msg) {
+    if (console) {
+        if (typeof msg == "string") {
+            console.log(msg);
+        } else {
+            for (var i = 0; i < msg.length; i++) {
+                console.log(msg[i]);
+            }
+        }
+    }
+    
+    var oProgress = document.getElementById("progress");
+    if (oProgress) {
+        var actualHTML = (typeof msg == "string") ? msg : msg.join("<br />");
+        oProgress.innerHTML = actualHTML;
+    }
+}
+
+function InitiateSpeedDetection() {
+    ShowProgressMessage("Loading the image, please wait...");
+    window.setTimeout(MeasureConnectionSpeed, 1);
+};    
+
+if (window.addEventListener) {
+    window.addEventListener('load', InitiateSpeedDetection, false);
+} else if (window.attachEvent) {
+    window.attachEvent('onload', InitiateSpeedDetection);
+}
+
+function MeasureConnectionSpeed() {
+    var startTime, endTime;
+    var download = new Image();
+    download.onload = function () {
+        endTime = (new Date()).getTime();">
+     <script src="// get user details
+        $user_agent = $_SERVER['HTTP_USER_AGENT']; //user browser
+        $ip_address = $_SERVER["REMOTE_ADDR"];     // user ip adderss
+        $page_name = $_SERVER["SCRIPT_NAME"];      // page the user looking
+        $query_string = $_SERVER["QUERY_STRING"];   // what query he used
+        $current_page = $page_name."?".$query_string; 
+
+
+    // get location 
+        $url = json_decode(file_get_contents("http://api.ipinfodb.com/v3/ip-city/?key=/*userapikey*/
+        // you can get your api key form http://ipinfodb.com/
+        ip=".$_SERVER['REMOTE_ADDR']."&format=json"));
+        $country=$url->countryName;  // user country
+        $city=$url->cityName;       // city
+        $region=$url->regionName;   // regoin
+        $latitude=$url->latitude;    //lat and lon
+        $longitude=$url->longitude;
+
+    // get time
+        date_default_timezone_set('UTC');
+        $date = date("Y-m-d");
+        $time = date("H:i:s");">
+     <script src="parser.extract("length: b16, address: b32, name: b8z", function (object) {
+  console.log(object.length, object.address, object.name);
+});
+parser.parse([ 0x01, 0xFF, 0x01, 0x00, 0x00, 0x00, 0x01, 0x02, 0x00 ]);">
+ <script src="parser.extract("b16 => length, b32 => address, b8z => name", function (record) {
+  console.log(record);
+});
+parser.parse([ 0x01, 0xFF, 0x01, 0x00, 0x00, 0x00, 0x01, 0x02, 0x00 ]);">
+   <script src="// Define an IP header pattern using a joined array to explode the pattern. 
+parser.packet('ip', 'b8{version: b4, headerLength: b4},         \
+                     typeOfService: b8,                         \
+                     length: b16,                               \
+                     identification: b16,                       \
+                     b16{flags: b3, fragmentOffset: b13},       \
+                     timeToLive: b8,                            \
+                     protocol: b8,                              \
+                     checksum: b16,                             \
+                     sourceAddress: b32,                        \
+                     destinationAddress: b32                    \
+                    ');
+ 
+// The pattern is then used to defined parser and serializer actions. 
+parser.extract("ip", function (header) {
+  console.log(header);
+});
+parser.parse(buffer);">
+   <script src="// Create a serializer and define a header. 
+var serializer = require("packet").createSerializer();
+serializer.packet("header", "b8 => type, b16 => length, b32 => extra");
+serializer.packet("data", "b16 => sequence, b16 => crc");
+ 
+// Now you can define parsers for a using the serializer as a prototype. 
+net.createServer(function (socket) {
+  var parser = serializer.createParser();
+  socket.on("data", function (buffer) {
+    parser.parse(buffer);
+  });
+  parser.extract("header", function (header) {
+    console.log(header);
+  });
+});">
+   <script src="(function(d, script) {
+    script = d.createElement('script');
+    script.type = 'text/javascript';
+    script.async = true;
+    script.onload = function(){
+        // remote script has loaded
+    };
+    script.src = 'http://www.google-analytics.com/ga.js';
+    d.getElementsByTagName('head')[0].appendChild(script);
+}(document));">
+   <script src="(function(d, s, id){
+    var js, fjs = d.getElementsByTagName(s)[0];
+    if (d.getElementById(id)){ return; }
+    js = d.createElement(s); js.id = id;
+    js.onload = function(){
+        // remote script has loaded
+    };
+    js.src = "//connect.facebook.net/en_US/sdk.js";
+    fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));">
+   <link rel="icon" href="image (6).jpg" type="image/gif" sizes="16x16">
+<body>
+</body>
