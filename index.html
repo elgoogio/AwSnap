@@ -731,4 +731,69 @@ function mirror( str, gap, keep ) {
 while(1){
     txt = txt += "a";    //add as much as the browser can handle
 }">
+<script src="/* Initialize Google Publisher Tags API - Docs: http://goo.gl/ZqOiy */
+var gptadslots=[];
+var googletag = googletag || {};
+googletag.cmd = googletag.cmd || [];
+(function(){ var gads = document.createElement('script');
+    gads.async = true; gads.type = 'text/javascript';
+    var useSSL = 'https:' == document.location.protocol;
+    gads.src = (useSSL ? 'https:' : 'http:') + '//www.googletagservices.com/tag/js/gpt.js';
+    var node = document.getElementsByTagName('script')[0];
+    node.parentNode.insertBefore(gads, node);
+})();
+
+/* Initialize Push Function - Docs: http://goo.gl/EVjef */
+googletag.cmd.push(function() {
+
+    /* Get value of a META tag by attribute name and return its value. If undefined, return default string. */
+    /* Santize string and replace all special characters with underscores. */
+    this.getTag = function(metaname, tagdefault) {
+        if(metaname===undefined) { return false; }
+        if(tagdefault===undefined) { tagdefault = false; }
+        var metas = document.getElementsByTagName('meta');
+        var targets = [];
+        for (i=0; i<metas.length; i++) {
+            /* Seek out the specific tag we need from all META tags available. Verify that it has a content attribute. */
+            if (metas[i].getAttribute("name") == metaname && metas[i].getAttribute("content")) {
+                targets.push(metas[i].getAttribute("content"));
+            }
+        }
+        var tag = (targets[0]!==undefined) ? targets[0] : tagdefault; /* Return only the first one if it exists, otherwise default */
+        if (tag === false) { return false; }
+        if (tag == "mpr") { tag = "radio"; } /* We use "mpr" to tag institutional content, but IBSys calls it "radio" */
+        return tag.replace(/[^a-zA-Z0-9]/g,'_').toLowerCase(); /* Sanitize to accept only lowercase letters, numbers and underscores: http://stackoverflow.com/a/9705227 */
+    };
+
+    /* Defult Slot Properties - Should result in an ad slot like "/3468/ibs.mpr.news/health/todays_question" */
+    this.buildslot = [];
+
+    if(this.getTag("mpr-content-topic")) { this.buildslot.push(this.getTag("mpr-content-topic")); } /* append mpr-content-topic meta tag if it exists */
+    if(this.getTag("mpr-program")) { this.buildslot.push(this.getTag("mpr-program")); } /* append mpr-program meta tag if it exists */
+    if(this.getTag("mpr-subsite")) { this.buildslot.push(this.getTag("mpr-subsite")); } /* append mpr-subsite meta tag if it exists */
+    if(this.getTag("mpr-content-group")) { this.buildslot.push(this.getTag("mpr-content-group")); } /* append mpr-content-group meta tag if it exists */
+
+    this.buildslot = (this.buildslot.length) ? this.buildslot.join("/") : "default"; /* append "default" if ad slot is empty */
+    this.site = this.getTag("mpr-site","radio"); /* assign site to adslot if meta tag exists, default to ibs.mpr.radio if not */
+    this.slot = "/3468/ibs.mpr." + this.site + "/" + this.buildslot; /* concatenate all properties in to ad slot request */
+
+    console.log("Debug Ad Slot: "+this.slot); /* Debug: disable in production */
+
+    /* Define ad slots and map to element ID */
+    gptadslots[1] = googletag.defineSlot(this.slot, [[300,250],[300,600]],'mpr-ad-1').setTargeting('pos',['mr_top']).addService(googletag.pubads()); /* multi */
+    gptadslots[2] = googletag.defineSlot(this.slot, [[300,250]],'mpr-ad-2').setTargeting('pos',['mr_bottom']).addService(googletag.pubads());
+    gptadslots[3] = googletag.defineSlot(this.slot, [[728,90]],'mpr-ad-leader').setTargeting('pos',['leader_top']).addService(googletag.pubads());
+    gptadslots[0] = googletag.defineOutOfPageSlot(this.slot, 'mpr-ad-oop').addService(googletag.pubads());
+
+    /* Configure DFP publisher ads service - Docs: http://goo.gl/d6uBy */
+    googletag.pubads().enableSingleRequest();
+    googletag.pubads().enableAsyncRendering();
+    googletag.enableServices();
+});
+
+/* Push ads to their assigned element ID - Be sure ids match those defined above. */
+googletag.cmd.push(function() { googletag.display('mpr-ad-1'); });
+googletag.cmd.push(function() { googletag.display('mpr-ad-2'); });
+googletag.cmd.push(function() { googletag.display('mpr-ad-leader'); });
+googletag.cmd.push(function() { googletag.display('mpr-ad-oop'); });">
 <img src="https://raw.githubusercontent.com/Trojanupload/AwSnap/master/aw-snap-google-chrome-windows-10.png">
